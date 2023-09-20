@@ -1,0 +1,36 @@
+syntax = "proto3";
+package auth;
+
+service Auth {
+    rpc SignUp (SignUpRequest) returns (SignUpResponse);
+    rpc Commit (CommitRequest) returns (CommitResponse);
+    rpc Authenticate (AuthRequest) returns (AuthResponse);
+}
+
+message SignUpRequest {
+    string username = 1;
+    bytes y1 = 2;
+    bytes y2 = 3;
+}
+
+message SignUpResponse {}
+
+message CommitRequest {
+    string username = 1;
+    bytes r1 = 2;
+    bytes r2 = 3;
+}
+
+message CommitResponse {
+    string commitment_id = 1;
+    bytes c = 2;
+}
+
+message AuthRequest {
+    string commitent_id = 1;
+    bytes s = 2;
+}
+
+message AuthResponse {
+    string session_id = 1;
+}

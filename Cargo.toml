@@ -5,8 +5,33 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[lib]
+name = "lib"
+path = "src/lib.rs"
+
+[[bin]]
+name = "server"
+path = "src/server.rs"
+
+[[bin]]
+name = "client"
+path = "src/client.rs"
+
 [dependencies]
+# Async
+tokio = {version = "1", features = ["macros", "rt-multi-thread"]}
+
+# Data
 num-bigint = {version = "0.4", features = ["rand"]}
 rand = "0.8"
 hex = "0.4"
 lazy_static = "1.4"
+
+# gRPC
+tonic = "0.10"
+tonic-types = "0.10"
+prost = "0.12"
+prost-types = "0.12" 
+
+[build-dependencies]
+tonic-build = "0.10"
