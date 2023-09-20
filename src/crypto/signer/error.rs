@@ -1,23 +1,19 @@
-use num_bigint::BigUint;
-use std::{ borrow::Cow, fmt::{ Debug, Display, Formatter, Result as FmtResult } };
+use std::{
+    borrow::Cow,
+    fmt::{Debug, Display, Formatter, Result as FmtResult},
+};
 
 pub enum SignerError {
-    GeneratorsNotSet,
-    ModuliNotSet,
-    InvalidGenerators((BigUint, BigUint)),
-    InvalidModuli((BigUint, BigUint)),
+    GroupNotSet,
+    InvalidGroup(String),
     InvalidSecret,
 }
 
 impl SignerError {
     fn message(&self) -> Cow<'static, str> {
         match self {
-            Self::GeneratorsNotSet => Cow::Borrowed("Generators not set"),
-            Self::ModuliNotSet => Cow::Borrowed("Moduli not set"),
-            Self::InvalidGenerators((alpha, beta)) =>
-                Cow::Owned(format!("Invalid generators (alpha, beta) => ({}, {})", alpha, beta)),
-            Self::InvalidModuli((p, q)) =>
-                Cow::Owned(format!("Invalid moduli (p, q) => ({}, {})", p, q)),
+            Self::GroupNotSet => Cow::Borrowed("Group not set"),
+            Self::InvalidGroup(details) => Cow::Owned(format!("Invalid group => {}", details)),
             Self::InvalidSecret => Cow::Borrowed("Invalid secret"),
         }
     }

@@ -1,5 +1,5 @@
-use crate::crypto::{ Challenge, Statement, Solution };
-use num_bigint::{ BigUint, RandBigInt };
+use crate::crypto::{Challenge, Solution, Statement};
+use num_bigint::{BigUint, RandBigInt};
 
 pub struct Verifier {
     alpha: BigUint,
@@ -12,12 +12,12 @@ pub struct Verifier {
 
 impl From<Statement> for Verifier {
     fn from(statement: Statement) -> Self {
-        let c = rand::thread_rng().gen_biguint_below(&statement.p);
+        let c = rand::thread_rng().gen_biguint_below(&statement.group.p);
 
         Self {
-            alpha: statement.alpha,
-            beta: statement.beta,
-            p: statement.p,
+            alpha: statement.group.alpha,
+            beta: statement.group.beta,
+            p: statement.group.p,
             y: statement.y,
             r: statement.r,
             c,
@@ -35,19 +35,13 @@ impl Verifier {
     pub fn verify_solution(&self, s: Solution) -> bool {
         let one = BigUint::from(1u32);
 
-        let c1 =
-            self.r.0 ==
-            (self.alpha.modpow(&s, &self.p) * self.y.0.modpow(&self.c, &self.p)).modpow(
-                &one,
-                &self.p
-            );
+        let c1 = self.r.0
+            == (self.alpha.modpow(&s, &self.p) * self.y.0.modpow(&self.c, &self.p))
+                .modpow(&one, &self.p);
 
-        let c2 =
-            self.r.1 ==
-            (self.beta.modpow(&s, &self.p) * self.y.1.modpow(&self.c, &self.p)).modpow(
-                &one,
-                &self.p
-            );
+        let c2 = self.r.1
+            == (self.beta.modpow(&s, &self.p) * self.y.1.modpow(&self.c, &self.p))
+                .modpow(&one, &self.p);
 
         c1 && c2
     }

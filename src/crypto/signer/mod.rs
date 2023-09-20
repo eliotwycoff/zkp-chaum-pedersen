@@ -1,50 +1,53 @@
-use crate::crypto::{ Challenge, Statement, Solution };
+use crate::crypto::{Challenge, Group, Solution, Statement, MOD_P_2048_BIT_GROUP};
 use error::SignerError;
-use num_bigint::{ BigUint, RandBigInt };
+use num_bigint::{BigUint, RandBigInt};
 use std::sync::Arc;
 
 pub mod error;
 
 pub struct Builder {
-    generators: Option<(Arc<BigUint>, Arc<BigUint>)>,
-    moduli: Option<(Arc<BigUint>, Arc<BigUint>)>,
+    group: Option<Arc<Group>>,
     x: Option<Arc<BigUint>>,
 }
 
 impl Builder {
     pub fn new() -> Self {
         Self {
-            generators: None,
-            moduli: None,
+            group: None,
             x: None,
         }
     }
 
-    pub fn with_generators(mut self, alpha: u32, beta: u32) -> Result<Self, SignerError> {
-        // TODO: Validate the generators.
-        self.generators = Some((Arc::new(BigUint::from(alpha)), Arc::new(BigUint::from(beta))));
+    pub fn with_group(
+        mut self,
+        p: u32,
+        q: u32,
+        alpha: u32,
+        beta: u32,
+    ) -> Result<Self, SignerError> {
+        // TODO: Validate the group.
+
+        let group = Arc::new(Group {
+            p: BigUint::from(p),
+            q: BigUint::from(q),
+            alpha: BigUint::from(alpha),
+            beta: BigUint::from(beta),
+        });
+
+        self.group = Some(group);
 
         Ok(self)
     }
 
-    pub fn with_moduli(mut self, p: u32, q: u32) -> Result<Self, SignerError> {
-        if self.generators.is_none() {
-            return Err(SignerError::GeneratorsNotSet);
-        }
+    pub fn with_2048_bit_group(mut self) -> Self {
+        self.group = Some(MOD_P_2048_BIT_GROUP.clone());
 
-        // TODO: Validate the moduli.
-        self.moduli = Some((Arc::new(BigUint::from(p)), Arc::new(BigUint::from(q))));
-
-        Ok(self)
+        self
     }
 
     pub fn with_secret(mut self, x: u32) -> Result<Self, SignerError> {
-        if self.generators.is_none() {
-            return Err(SignerError::GeneratorsNotSet);
-        }
-
-        if self.moduli.is_none() {
-            return Err(SignerError::ModuliNotSet);
+        if self.group.is_none() {
+            return Err(SignerError::GroupNotSet);
         }
 
         // TODO: Validate the secret.
@@ -53,57 +56,55 @@ impl Builder {
         Ok(self)
     }
 
-    pub fn build(&self) -> Result<Signer, SignerError> {
-        let (alpha, beta) = match &self.generators {
-            Some((alpha, beta)) => (alpha.clone(), beta.clone()),
-            None => {
-                return Err(SignerError::GeneratorsNotSet);
-            }
-        };
+    pub fn with_random_secret(mut self) -> Result<Self, SignerError> {
+        match &self.group {
+            Some(group) => {
+                self.x = Some(Arc::new(rand::thread_rng().gen_biguint_below(&group.q)));
 
-        let (p, q) = match &self.moduli {
-            Some((p, q)) => (p.clone(), q.clone()),
+                Ok(self)
+            }
+            None => Err(SignerError::GroupNotSet),
+        }
+    }
+
+    pub fn build(&self) -> Result<Signer, SignerError> {
+        let group = match &self.group {
+            Some(group) => (*group).clone(),
             None => {
-                return Err(SignerError::ModuliNotSet);
+                return Err(SignerError::GroupNotSet);
             }
         };
 
         let x = match &self.x {
             Some(x) => x.clone(),
-            None => Arc::new(rand::thread_rng().gen_biguint_below(&q)),
+            None => Arc::new(rand::thread_rng().gen_biguint_below(&group.q)),
         };
 
-        let k = Arc::new(rand::thread_rng().gen_biguint_below(&q));
+        let k = Arc::new(rand::thread_rng().gen_biguint_below(&group.q));
 
-        Ok(Signer {
-            alpha,
-            beta,
-            p,
-            q,
-            x,
-            k,
-        })
+        Ok(Signer { group, x, k })
     }
 }
 
 pub struct Signer {
-    alpha: Arc<BigUint>,
-    beta: Arc<BigUint>,
-    p: Arc<BigUint>,
-    q: Arc<BigUint>,
+    group: Arc<Group>,
     x: Arc<BigUint>,
     k: Arc<BigUint>,
 }
 
 impl Signer {
     pub fn create_statement(&self) -> Statement {
-        let y = (self.alpha.modpow(&self.x, &self.p), self.beta.modpow(&self.x, &self.p));
-        let r = (self.alpha.modpow(&self.k, &self.p), self.beta.modpow(&self.k, &self.p));
+        let y = (
+            self.alpha().modpow(&self.x, self.p()),
+            self.beta().modpow(&self.x, self.p()),
+        );
+        let r = (
+            self.alpha().modpow(&self.k, self.p()),
+            self.beta().modpow(&self.k, self.p()),
+        );
 
         Statement {
-            alpha: (*self.alpha).clone(),
-            beta: (*self.beta).clone(),
-            p: (*self.p).clone(),
+            group: (*self.group).clone(),
             y,
             r,
         }
@@ -115,19 +116,30 @@ impl Signer {
         let cx = c * &*self.x;
 
         if *self.k >= cx {
-            (&*self.k - cx).modpow(&BigUint::from(1u32), &self.q)
+            (&*self.k - cx).modpow(&BigUint::from(1u32), self.q())
         } else {
-            &*self.q - (cx - &*self.k).modpow(&BigUint::from(1u32), &self.q)
+            self.q() - (cx - &*self.k).modpow(&BigUint::from(1u32), self.q())
         }
+    }
+
+    pub fn p(&self) -> &BigUint {
+        &self.group.p
+    }
+
+    pub fn q(&self) -> &BigUint {
+        &self.group.q
+    }
+
+    pub fn alpha(&self) -> &BigUint {
+        &self.group.alpha
+    }
+
+    pub fn beta(&self) -> &BigUint {
+        &self.group.beta
     }
 
     #[cfg(test)]
     pub fn override_k(&mut self, k: u32) {
         self.k = Arc::new(BigUint::from(k));
-    }
-
-    #[cfg(test)]
-    pub fn q(&self) -> &BigUint {
-        &*self.q
     }
 }
