@@ -1,5 +1,5 @@
 use crate::crypto::{ Challenge, Statement, Solution };
-use num_bigint::BigUint;
+use num_bigint::{ BigUint, RandBigInt };
 
 pub struct Verifier {
     alpha: BigUint,
@@ -12,13 +12,15 @@ pub struct Verifier {
 
 impl From<Statement> for Verifier {
     fn from(statement: Statement) -> Self {
+        let c = rand::thread_rng().gen_biguint_below(&statement.p);
+
         Self {
             alpha: statement.alpha,
             beta: statement.beta,
             p: statement.p,
             y: statement.y,
             r: statement.r,
-            c: BigUint::from(1u32), // TODO: Generate this randomly
+            c,
         }
     }
 }
@@ -51,7 +53,7 @@ impl Verifier {
     }
 
     #[cfg(test)]
-    pub fn set_c(&mut self, c: BigUint) {
-        self.c = c;
+    pub fn override_c(&mut self, c: u32) {
+        self.c = BigUint::from(c);
     }
 }
