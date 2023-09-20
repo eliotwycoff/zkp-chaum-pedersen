@@ -1,4 +1,4 @@
-use crate::crypto::{Challenge, Group, Solution, Statement, MOD_P_2048_BIT_GROUP};
+use crate::crypto::{Challenge, Commitment, Group, Solution, MOD_P_2048_BIT_GROUP};
 use error::SignerError;
 use num_bigint::{BigUint, RandBigInt};
 use std::sync::Arc;
@@ -93,7 +93,7 @@ pub struct Signer {
 }
 
 impl Signer {
-    pub fn create_statement(&self) -> Statement {
+    pub fn create_commitment(&self) -> Commitment {
         let y = (
             self.alpha().modpow(&self.x, self.p()),
             self.beta().modpow(&self.x, self.p()),
@@ -103,7 +103,7 @@ impl Signer {
             self.beta().modpow(&self.k, self.p()),
         );
 
-        Statement {
+        Commitment {
             group: (*self.group).clone(),
             y,
             r,

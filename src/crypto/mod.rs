@@ -86,7 +86,7 @@ pub struct Group {
     pub beta: BigUint,
 }
 
-pub struct Statement {
+pub struct Commitment {
     pub group: Group,
     pub y: (BigUint, BigUint),
     pub r: (BigUint, BigUint),

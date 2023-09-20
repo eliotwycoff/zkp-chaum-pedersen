@@ -1,4 +1,4 @@
-use crate::crypto::{Challenge, Solution, Statement};
+use crate::crypto::{Challenge, Commitment, Solution};
 use num_bigint::{BigUint, RandBigInt};
 
 pub struct Verifier {
@@ -10,16 +10,16 @@ pub struct Verifier {
     c: BigUint,
 }
 
-impl From<Statement> for Verifier {
-    fn from(statement: Statement) -> Self {
-        let c = rand::thread_rng().gen_biguint_below(&statement.group.p);
+impl From<Commitment> for Verifier {
+    fn from(commitment: Commitment) -> Self {
+        let c = rand::thread_rng().gen_biguint_below(&commitment.group.p);
 
         Self {
-            alpha: statement.group.alpha,
-            beta: statement.group.beta,
-            p: statement.group.p,
-            y: statement.y,
-            r: statement.r,
+            alpha: commitment.group.alpha,
+            beta: commitment.group.beta,
+            p: commitment.group.p,
+            y: commitment.y,
+            r: commitment.r,
             c,
         }
     }
@@ -30,8 +30,8 @@ impl Verifier {
         self.c.clone()
     }
 
-    /// Verifies that the given solution satisifes the problem statement, i.e. checks that
-    /// `r0 = alpha^s * y1^c` and `r1 = beta^s * y1^c`.
+    /// Verifies that the given solution satisifes the commitment, i.e.
+    /// checks that `r0 = alpha^s * y1^c` and `r1 = beta^s * y1^c`.
     pub fn verify_solution(&self, s: Solution) -> bool {
         let one = BigUint::from(1u32);
 

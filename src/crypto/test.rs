@@ -36,7 +36,7 @@ fn can_build_signer_with_simple_values_and_fixed_k() -> TestResult<()> {
 #[test]
 fn verifier_with_fixed_c_can_verify_solution_from_simple_signer_with_fixed_k() -> TestResult<()> {
     let signer = test_setup_with_simple_signer(Some(7u32))?;
-    let mut verifier = Verifier::from(signer.create_statement());
+    let mut verifier = Verifier::from(signer.create_commitment());
 
     verifier.override_c(4u32);
 
@@ -51,7 +51,7 @@ fn verifier_with_fixed_c_can_verify_solution_from_simple_signer_with_fixed_k() -
 fn verifier_with_fixed_c_rejects_invalid_solution_from_simple_signer_with_fixed_k() -> TestResult<()>
 {
     let signer = test_setup_with_simple_signer(Some(7u32))?;
-    let mut verifier = Verifier::from(signer.create_statement());
+    let mut verifier = Verifier::from(signer.create_commitment());
 
     verifier.override_c(4u32);
 
@@ -72,7 +72,7 @@ fn can_build_signer_with_simple_values() -> TestResult<()> {
 #[test]
 fn verifier_with_fixed_c_can_verify_solution_from_simple_signer() -> TestResult<()> {
     let signer = test_setup_with_simple_signer(None)?;
-    let mut verifier = Verifier::from(signer.create_statement());
+    let mut verifier = Verifier::from(signer.create_commitment());
 
     verifier.override_c(4u32);
 
@@ -86,7 +86,7 @@ fn verifier_with_fixed_c_can_verify_solution_from_simple_signer() -> TestResult<
 #[test]
 fn verifier_with_fixed_c_rejects_invalid_solution_from_simple_signer() -> TestResult<()> {
     let signer = test_setup_with_simple_signer(None)?;
-    let mut verifier = Verifier::from(signer.create_statement());
+    let mut verifier = Verifier::from(signer.create_commitment());
 
     verifier.override_c(4u32);
 
@@ -102,7 +102,7 @@ fn verifier_with_fixed_c_rejects_invalid_solution_from_simple_signer() -> TestRe
 #[test]
 fn verifier_can_verify_solution_from_simple_signer() -> TestResult<()> {
     let signer = test_setup_with_simple_signer(None)?;
-    let verifier = Verifier::from(signer.create_statement());
+    let verifier = Verifier::from(signer.create_commitment());
     let solution = signer.solve_challenge(verifier.create_challenge());
 
     assert!(verifier.verify_solution(solution));
@@ -113,7 +113,7 @@ fn verifier_can_verify_solution_from_simple_signer() -> TestResult<()> {
 #[test]
 fn verifier_rejects_invalid_solution_from_simple_signer() -> TestResult<()> {
     let signer = test_setup_with_simple_signer(None)?;
-    let verifier = Verifier::from(signer.create_statement());
+    let verifier = Verifier::from(signer.create_commitment());
     let offset = BigUint::from(1u32);
     let solution = (signer.solve_challenge(verifier.create_challenge()) + offset)
         .modpow(&BigUint::from(1u32), signer.q());
@@ -126,7 +126,7 @@ fn verifier_rejects_invalid_solution_from_simple_signer() -> TestResult<()> {
 #[test]
 fn verifier_can_verify_solution_from_2048_bit_signer() -> TestResult<()> {
     let signer = test_setup_with_2048_bit_signer()?;
-    let verifier = Verifier::from(signer.create_statement());
+    let verifier = Verifier::from(signer.create_commitment());
     let solution = signer.solve_challenge(verifier.create_challenge());
 
     assert!(verifier.verify_solution(solution));
@@ -137,7 +137,7 @@ fn verifier_can_verify_solution_from_2048_bit_signer() -> TestResult<()> {
 #[test]
 fn verifier_rejects_invalid_solution_from_2048_bit_signer() -> TestResult<()> {
     let signer = test_setup_with_2048_bit_signer()?;
-    let verifier = Verifier::from(signer.create_statement());
+    let verifier = Verifier::from(signer.create_commitment());
     let offset = BigUint::from(1u32);
     let solution = (signer.solve_challenge(verifier.create_challenge()) + offset)
         .modpow(&BigUint::from(1u32), signer.q());
