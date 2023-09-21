@@ -1,61 +1,43 @@
-use crate::crypto::{
-    signer::{Builder, Signer},
-    verifier::Verifier,
+use crate::{
+    crypto::{signer::Signer, verifier::Verifier},
+    grpc::auth::Group,
 };
-use num_bigint::BigUint;
 
 type TestResult<T> = Result<T, Box<dyn std::error::Error>>;
 
-fn test_setup_with_simple_signer(k: Option<u32>) -> TestResult<Signer> {
-    let mut signer = Builder::new()
-        .with_group(23u32, 11u32, 4u32, 9u32)?
-        .with_secret(6u32)?
-        .build()?;
+fn test_valid_solution_for_group(group: Group) -> TestResult<()> {
+    // Set up the signer and get a commitment.
+    let signer = Signer::try_from(group)?;
+    let secret = signer.create_secret();
+    let signature = signer.create_signature(&secret);
+    let commitment = signer.create_commitment();
 
-    if let Some(k) = k {
-        signer.override_k(k);
-    }
+    // Set up the verifier and get a challenge.
+    let verifier = Verifier::try_from((group, signature, commitment))?;
+    let challenge = verifier.create_challenge();
 
-    Ok(signer)
-}
+    // Create a valid solution to the challenge.
+    let solution = signer.create_solution(&secret, challenge);
 
-fn test_setup_with_2048_bit_signer() -> TestResult<Signer> {
-    Ok(Builder::new()
-        .with_2048_bit_group()
-        .with_random_secret()?
-        .build()?)
-}
-
-#[test]
-fn can_build_signer_with_simple_values_and_fixed_k() -> TestResult<()> {
-    let _ = test_setup_with_simple_signer(Some(7u32))?;
-
-    Ok(())
-}
-
-#[test]
-fn verifier_with_fixed_c_can_verify_solution_from_simple_signer_with_fixed_k() -> TestResult<()> {
-    let signer = test_setup_with_simple_signer(Some(7u32))?;
-    let mut verifier = Verifier::from(signer.create_commitment());
-
-    verifier.override_c(4u32);
-
-    let solution = signer.solve_challenge(verifier.create_challenge());
-
+    // Test to make sure that the solution passes.
     assert!(verifier.verify_solution(solution));
 
     Ok(())
 }
 
-#[test]
-fn verifier_with_fixed_c_rejects_invalid_solution_from_simple_signer_with_fixed_k() -> TestResult<()>
-{
-    let signer = test_setup_with_simple_signer(Some(7u32))?;
-    let mut verifier = Verifier::from(signer.create_commitment());
+fn test_invalid_solution_for_group(group: Group) -> TestResult<()> {
+    // Set up the signer and get a commitment.
+    let signer = Signer::try_from(group)?;
+    let secret = signer.create_secret();
+    let signature = signer.create_signature(&secret);
+    let commitment = signer.create_commitment();
 
-    verifier.override_c(4u32);
+    // Set up the verifier and get a challenge.
+    let verifier = Verifier::try_from((group, signature, commitment))?;
+    let challenge = verifier.create_challenge();
 
-    let solution = BigUint::from(2u32); // an invalid solution to the simple example
+    // Create an invalid solution to the challenge.
+    let solution = signer.create_invalid_solution(&secret, challenge);
 
     assert!(!verifier.verify_solution(solution));
 
@@ -63,86 +45,41 @@ fn verifier_with_fixed_c_rejects_invalid_solution_from_simple_signer_with_fixed_
 }
 
 #[test]
-fn can_build_signer_with_simple_values() -> TestResult<()> {
-    let _ = test_setup_with_simple_signer(None)?;
-
-    Ok(())
+fn valid_4_bit_q_group_solution_passes() -> TestResult<()> {
+    test_valid_solution_for_group(Group::ModP004BitQGroup)
 }
 
 #[test]
-fn verifier_with_fixed_c_can_verify_solution_from_simple_signer() -> TestResult<()> {
-    let signer = test_setup_with_simple_signer(None)?;
-    let mut verifier = Verifier::from(signer.create_commitment());
-
-    verifier.override_c(4u32);
-
-    let solution = signer.solve_challenge(verifier.create_challenge());
-
-    assert!(verifier.verify_solution(solution));
-
-    Ok(())
+fn invalid_4_bit_q_group_solution_is_rejected() -> TestResult<()> {
+    test_invalid_solution_for_group(Group::ModP004BitQGroup)
 }
 
 #[test]
-fn verifier_with_fixed_c_rejects_invalid_solution_from_simple_signer() -> TestResult<()> {
-    let signer = test_setup_with_simple_signer(None)?;
-    let mut verifier = Verifier::from(signer.create_commitment());
-
-    verifier.override_c(4u32);
-
-    let offset = BigUint::from(1u32);
-    let solution = (signer.solve_challenge(verifier.create_challenge()) + offset)
-        .modpow(&BigUint::from(1u32), signer.q());
-
-    assert!(!verifier.verify_solution(solution));
-
-    Ok(())
+fn valid_160_bit_q_group_solution_passes() -> TestResult<()> {
+    test_valid_solution_for_group(Group::ModP160BitQGroup)
 }
 
 #[test]
-fn verifier_can_verify_solution_from_simple_signer() -> TestResult<()> {
-    let signer = test_setup_with_simple_signer(None)?;
-    let verifier = Verifier::from(signer.create_commitment());
-    let solution = signer.solve_challenge(verifier.create_challenge());
-
-    assert!(verifier.verify_solution(solution));
-
-    Ok(())
+fn invalid_160_bit_q_group_solution_is_rejected() -> TestResult<()> {
+    test_invalid_solution_for_group(Group::ModP160BitQGroup)
 }
 
 #[test]
-fn verifier_rejects_invalid_solution_from_simple_signer() -> TestResult<()> {
-    let signer = test_setup_with_simple_signer(None)?;
-    let verifier = Verifier::from(signer.create_commitment());
-    let offset = BigUint::from(1u32);
-    let solution = (signer.solve_challenge(verifier.create_challenge()) + offset)
-        .modpow(&BigUint::from(1u32), signer.q());
-
-    assert!(!verifier.verify_solution(solution));
-
-    Ok(())
+fn valid_224_bit_q_group_solution_passes() -> TestResult<()> {
+    test_valid_solution_for_group(Group::ModP224BitQGroup)
 }
 
 #[test]
-fn verifier_can_verify_solution_from_2048_bit_signer() -> TestResult<()> {
-    let signer = test_setup_with_2048_bit_signer()?;
-    let verifier = Verifier::from(signer.create_commitment());
-    let solution = signer.solve_challenge(verifier.create_challenge());
-
-    assert!(verifier.verify_solution(solution));
-
-    Ok(())
+fn invalid_224_bit_q_group_solution_is_rejected() -> TestResult<()> {
+    test_invalid_solution_for_group(Group::ModP224BitQGroup)
 }
 
 #[test]
-fn verifier_rejects_invalid_solution_from_2048_bit_signer() -> TestResult<()> {
-    let signer = test_setup_with_2048_bit_signer()?;
-    let verifier = Verifier::from(signer.create_commitment());
-    let offset = BigUint::from(1u32);
-    let solution = (signer.solve_challenge(verifier.create_challenge()) + offset)
-        .modpow(&BigUint::from(1u32), signer.q());
+fn valid_256_bit_q_group_solution_passes() -> TestResult<()> {
+    test_valid_solution_for_group(Group::ModP256BitQGroup)
+}
 
-    assert!(!verifier.verify_solution(solution));
-
-    Ok(())
+#[test]
+fn invalid_256_bit_q_group_solution_is_rejected() -> TestResult<()> {
+    test_invalid_solution_for_group(Group::ModP256BitQGroup)
 }

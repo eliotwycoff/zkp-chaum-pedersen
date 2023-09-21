@@ -1,145 +1,81 @@
-use crate::crypto::{Challenge, Commitment, Group, Solution, MOD_P_2048_BIT_GROUP};
-use error::SignerError;
+use crate::{
+    crypto::{
+        CryptoError, GroupParams, MOD_P_004_BIT_Q_GROUP, MOD_P_160_BIT_Q_GROUP,
+        MOD_P_224_BIT_Q_GROUP, MOD_P_256_BIT_Q_GROUP,
+    },
+    grpc::auth::{Challenge, Commitment, Group, Signature, Solution},
+};
 use num_bigint::{BigUint, RandBigInt};
-use std::sync::Arc;
-
-pub mod error;
-
-pub struct Builder {
-    group: Option<Arc<Group>>,
-    x: Option<Arc<BigUint>>,
-}
-
-impl Builder {
-    pub fn new() -> Self {
-        Self {
-            group: None,
-            x: None,
-        }
-    }
-
-    pub fn with_group(
-        mut self,
-        p: u32,
-        q: u32,
-        alpha: u32,
-        beta: u32,
-    ) -> Result<Self, SignerError> {
-        // TODO: Validate the group.
-
-        let group = Arc::new(Group {
-            p: BigUint::from(p),
-            q: BigUint::from(q),
-            alpha: BigUint::from(alpha),
-            beta: BigUint::from(beta),
-        });
-
-        self.group = Some(group);
-
-        Ok(self)
-    }
-
-    pub fn with_2048_bit_group(mut self) -> Self {
-        self.group = Some(MOD_P_2048_BIT_GROUP.clone());
-
-        self
-    }
-
-    pub fn with_secret(mut self, x: u32) -> Result<Self, SignerError> {
-        if self.group.is_none() {
-            return Err(SignerError::GroupNotSet);
-        }
-
-        // TODO: Validate the secret.
-        self.x = Some(Arc::new(BigUint::from(x)));
-
-        Ok(self)
-    }
-
-    pub fn with_random_secret(mut self) -> Result<Self, SignerError> {
-        match &self.group {
-            Some(group) => {
-                self.x = Some(Arc::new(rand::thread_rng().gen_biguint_below(&group.q)));
-
-                Ok(self)
-            }
-            None => Err(SignerError::GroupNotSet),
-        }
-    }
-
-    pub fn build(&self) -> Result<Signer, SignerError> {
-        let group = match &self.group {
-            Some(group) => (*group).clone(),
-            None => {
-                return Err(SignerError::GroupNotSet);
-            }
-        };
-
-        let x = match &self.x {
-            Some(x) => x.clone(),
-            None => Arc::new(rand::thread_rng().gen_biguint_below(&group.q)),
-        };
-
-        let k = Arc::new(rand::thread_rng().gen_biguint_below(&group.q));
-
-        Ok(Signer { group, x, k })
-    }
-}
 
 pub struct Signer {
-    group: Arc<Group>,
-    x: Arc<BigUint>,
-    k: Arc<BigUint>,
+    group: &'static GroupParams,
+    k: BigUint,
 }
 
 impl Signer {
-    pub fn create_commitment(&self) -> Commitment {
-        let y = (
-            self.alpha().modpow(&self.x, self.p()),
-            self.beta().modpow(&self.x, self.p()),
-        );
-        let r = (
-            self.alpha().modpow(&self.k, self.p()),
-            self.beta().modpow(&self.k, self.p()),
-        );
+    pub fn create_secret(&self) -> BigUint {
+        rand::thread_rng().gen_biguint_below(&self.group.q)
+    }
 
+    pub fn create_signature(&self, secret: &BigUint) -> Signature {
+        Signature {
+            y1: self.group.alpha.modpow(secret, &self.group.p).to_bytes_be(),
+            y2: self.group.beta.modpow(secret, &self.group.p).to_bytes_be(),
+        }
+    }
+
+    pub fn create_commitment(&self) -> Commitment {
         Commitment {
-            group: (*self.group).clone(),
-            y,
-            r,
+            r1: self
+                .group
+                .alpha
+                .modpow(&self.k, &self.group.p)
+                .to_bytes_be(),
+            r2: self.group.beta.modpow(&self.k, &self.group.p).to_bytes_be(),
         }
     }
 
     /// Finds a solution to the given challenge, i.e. solves for `s` where
     /// `s = k - (c * x) mod q`.
-    pub fn solve_challenge(&self, c: Challenge) -> Solution {
-        let cx = c * &*self.x;
+    pub fn create_solution(&self, secret: &BigUint, challenge: Challenge) -> Solution {
+        let cx = BigUint::from_bytes_be(&challenge.c) * secret;
 
-        if *self.k >= cx {
-            (&*self.k - cx).modpow(&BigUint::from(1u32), self.q())
+        let s = if self.k >= cx {
+            (&self.k - cx).modpow(&BigUint::from(1u32), &self.group.q)
         } else {
-            self.q() - (cx - &*self.k).modpow(&BigUint::from(1u32), self.q())
-        }
-    }
+            &self.group.q - (cx - &self.k).modpow(&BigUint::from(1u32), &self.group.q)
+        };
 
-    pub fn p(&self) -> &BigUint {
-        &self.group.p
-    }
-
-    pub fn q(&self) -> &BigUint {
-        &self.group.q
-    }
-
-    pub fn alpha(&self) -> &BigUint {
-        &self.group.alpha
-    }
-
-    pub fn beta(&self) -> &BigUint {
-        &self.group.beta
+        Solution { s: s.to_bytes_be() }
     }
 
     #[cfg(test)]
-    pub fn override_k(&mut self, k: u32) {
-        self.k = Arc::new(BigUint::from(k));
+    /// Create a provably invalid solution to the challenge (for testing purposes).
+    pub fn create_invalid_solution(&self, secret: &BigUint, challenge: Challenge) -> Solution {
+        let s_valid = BigUint::from_bytes_be(&self.create_solution(secret, challenge).s);
+        let offset = BigUint::from(1u32);
+        let s_invalid = (s_valid + offset).modpow(&BigUint::from(1u32), &self.group.q);
+
+        Solution {
+            s: s_invalid.to_bytes_be(),
+        }
+    }
+}
+
+impl TryFrom<Group> for Signer {
+    type Error = CryptoError;
+
+    fn try_from(group: Group) -> Result<Self, Self::Error> {
+        let params = match group {
+            Group::ModP004BitQGroup => &*MOD_P_004_BIT_Q_GROUP,
+            Group::ModP160BitQGroup => &*MOD_P_160_BIT_Q_GROUP,
+            Group::ModP224BitQGroup => &*MOD_P_224_BIT_Q_GROUP,
+            Group::ModP256BitQGroup => &*MOD_P_256_BIT_Q_GROUP,
+            Group::UnspecifiedGroup => return Err(CryptoError::GroupNotSpecified),
+        };
+
+        let k = rand::thread_rng().gen_biguint_below(&params.q);
+
+        Ok(Self { group: params, k })
     }
 }
