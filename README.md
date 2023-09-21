@@ -1,5 +1,5 @@
-# Chaum-Pedersen Zero-Knowledge Proof Authentication
-This project is a demo of how authentication can be performed using a custom implementation of the Chaum-Pedersen Zero-Knowledge Proof protocol. 
+# Authentication Via Zero-Knowledge Proofs
+This project is a **work-in-progress** demo of how authentication can be performed using a custom implementation of the Chaum-Pedersen Zero-Knowledge Proof protocol. 
 
 ## Getting Started
 
