@@ -21,6 +21,8 @@ Run the authentication server.
 cargo run --bin server
 ```
 
+The terminal will prompt you to select an encryption group. After selecting one, the server will start.
+
 Finally, in a separate terminal, run the client.
 
 ```bash

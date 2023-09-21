@@ -52,7 +52,7 @@ pub struct Challenge {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CommitResponse {
     #[prost(string, tag = "1")]
-    pub challenge_id: ::prost::alloc::string::String,
+    pub verifier_id: ::prost::alloc::string::String,
     #[prost(message, optional, tag = "2")]
     pub challenge: ::core::option::Option<Challenge>,
 }
@@ -66,7 +66,7 @@ pub struct Solution {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct AuthRequest {
     #[prost(string, tag = "1")]
-    pub challenge_id: ::prost::alloc::string::String,
+    pub verifier_id: ::prost::alloc::string::String,
     #[prost(message, optional, tag = "2")]
     pub solution: ::core::option::Option<Solution>,
 }

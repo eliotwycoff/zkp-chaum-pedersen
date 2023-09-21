@@ -49,7 +49,7 @@ message Challenge {
 }
 
 message CommitResponse {
-    string challenge_id = 1;
+    string verifier_id = 1;
     Challenge challenge = 2;
 }
 
@@ -58,7 +58,7 @@ message Solution {
 }
 
 message AuthRequest {
-    string challenge_id = 1;
+    string verifier_id = 1;
     Solution solution = 2;
 }
 

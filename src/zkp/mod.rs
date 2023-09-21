@@ -122,6 +122,7 @@ lazy_static! {
     };
 }
 
+#[derive(Debug)]
 pub struct GroupParams {
     p: BigUint,
     q: BigUint,

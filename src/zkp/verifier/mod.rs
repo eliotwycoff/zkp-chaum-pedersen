@@ -7,6 +7,7 @@ use crate::{
 };
 use num_bigint::{BigUint, RandBigInt};
 
+#[derive(Debug)]
 pub struct Verifier {
     group: &'static GroupParams,
     y1: BigUint,
