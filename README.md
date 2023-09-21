@@ -34,3 +34,7 @@ cargo run --bin client
 ```bash
 cargo test
 ```
+
+## Credits
+
+Credit for the idea is due to Guido Giuntoli and his Udemy course on [ZKPs in Rust](https://www.udemy.com/course/zero-knowledge-proofs-in-rust/). 
