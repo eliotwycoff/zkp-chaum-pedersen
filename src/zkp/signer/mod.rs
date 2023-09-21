@@ -1,9 +1,9 @@
 use crate::{
-    crypto::{
+    grpc::auth::{Challenge, Commitment, Group, Signature, Solution},
+    zkp::{
         CryptoError, GroupParams, MOD_P_004_BIT_Q_GROUP, MOD_P_160_BIT_Q_GROUP,
         MOD_P_224_BIT_Q_GROUP, MOD_P_256_BIT_Q_GROUP,
     },
-    grpc::auth::{Challenge, Commitment, Group, Signature, Solution},
 };
 use num_bigint::{BigUint, RandBigInt};
 

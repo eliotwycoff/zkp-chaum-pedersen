@@ -1,6 +1,6 @@
 use crate::{
-    crypto::{signer::Signer, verifier::Verifier},
     grpc::auth::Group,
+    zkp::{signer::Signer, verifier::Verifier},
 };
 
 type TestResult<T> = Result<T, Box<dyn std::error::Error>>;
