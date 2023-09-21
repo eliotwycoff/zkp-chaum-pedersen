@@ -1,5 +1,5 @@
 # Authentication Via Zero-Knowledge Proofs
-This project is a **work-in-progress** demo of how authentication can be performed using a custom implementation of the Chaum-Pedersen Zero-Knowledge Proof protocol. 
+This project is a **work-in-progress** demo of how authentication can be performed using a custom implementation of the Chaum-Pedersen Zero-Knowledge Proof protocol. Credit for the idea is due to Guido Giuntoli and his Udemy course on [ZKPs in Rust](https://www.udemy.com/course/zero-knowledge-proofs-in-rust/). 
 
 ## Getting Started
 
@@ -36,7 +36,3 @@ cargo run --bin client
 ```bash
 cargo test
 ```
-
-## Credits
-
-Credit for the idea is due to Guido Giuntoli and his Udemy course on [ZKPs in Rust](https://www.udemy.com/course/zero-knowledge-proofs-in-rust/). 
