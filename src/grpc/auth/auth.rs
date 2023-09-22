@@ -76,6 +76,22 @@ pub struct AuthResponse {
     #[prost(string, tag = "1")]
     pub session_id: ::prost::alloc::string::String,
 }
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetPriceRequest {
+    #[prost(string, tag = "1")]
+    pub session_id: ::prost::alloc::string::String,
+    #[prost(string, tag = "2")]
+    pub symbol: ::prost::alloc::string::String,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetPriceResponse {
+    #[prost(string, tag = "1")]
+    pub symbol: ::prost::alloc::string::String,
+    #[prost(string, tag = "2")]
+    pub price: ::prost::alloc::string::String,
+}
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
 pub enum Group {
@@ -196,6 +212,7 @@ pub mod auth_client {
             self.inner = self.inner.max_encoding_message_size(limit);
             self
         }
+        /// ZKP Authentication Routes
         pub async fn get_group(
             &mut self,
             request: impl tonic::IntoRequest<super::GetGroupRequest>,
@@ -275,6 +292,29 @@ pub mod auth_client {
             req.extensions_mut().insert(GrpcMethod::new("auth.Auth", "Authenticate"));
             self.inner.unary(req, path, codec).await
         }
+        /// Protected Routes
+        pub async fn get_price(
+            &mut self,
+            request: impl tonic::IntoRequest<super::GetPriceRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::GetPriceResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static("/auth.Auth/GetPrice");
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new("auth.Auth", "GetPrice"));
+            self.inner.unary(req, path, codec).await
+        }
     }
 }
 /// Generated server implementations.
@@ -284,6 +324,7 @@ pub mod auth_server {
     /// Generated trait containing gRPC methods that should be implemented for use with AuthServer.
     #[async_trait]
     pub trait Auth: Send + Sync + 'static {
+        /// ZKP Authentication Routes
         async fn get_group(
             &self,
             request: tonic::Request<super::GetGroupRequest>,
@@ -303,6 +344,14 @@ pub mod auth_server {
             &self,
             request: tonic::Request<super::AuthRequest>,
         ) -> std::result::Result<tonic::Response<super::AuthResponse>, tonic::Status>;
+        /// Protected Routes
+        async fn get_price(
+            &self,
+            request: tonic::Request<super::GetPriceRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::GetPriceResponse>,
+            tonic::Status,
+        >;
     }
     #[derive(Debug)]
     pub struct AuthServer<T: Auth> {
@@ -544,6 +593,50 @@ pub mod auth_server {
                     let fut = async move {
                         let inner = inner.0;
                         let method = AuthenticateSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/auth.Auth/GetPrice" => {
+                    #[allow(non_camel_case_types)]
+                    struct GetPriceSvc<T: Auth>(pub Arc<T>);
+                    impl<T: Auth> tonic::server::UnaryService<super::GetPriceRequest>
+                    for GetPriceSvc<T> {
+                        type Response = super::GetPriceResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::GetPriceRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as Auth>::get_price(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = GetPriceSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(

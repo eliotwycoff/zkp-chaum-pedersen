@@ -1,4 +1,4 @@
-pub use error::CryptoError;
+pub use error::Error;
 use lazy_static::lazy_static;
 use num_bigint::{BigUint, RandBigInt};
 

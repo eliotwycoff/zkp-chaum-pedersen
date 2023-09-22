@@ -1,8 +1,8 @@
 use crate::{
     grpc::auth::{Challenge, Commitment, Group, Signature, Solution},
     zkp::{
-        CryptoError, GroupParams, MOD_P_004_BIT_Q_GROUP, MOD_P_160_BIT_Q_GROUP,
-        MOD_P_224_BIT_Q_GROUP, MOD_P_256_BIT_Q_GROUP,
+        Error, GroupParams, MOD_P_004_BIT_Q_GROUP, MOD_P_160_BIT_Q_GROUP, MOD_P_224_BIT_Q_GROUP,
+        MOD_P_256_BIT_Q_GROUP,
     },
 };
 use num_bigint::{BigUint, RandBigInt};
@@ -44,7 +44,7 @@ impl Verifier {
 }
 
 impl TryFrom<(Group, Signature, Commitment)> for Verifier {
-    type Error = CryptoError;
+    type Error = Error;
 
     fn try_from(
         (group, signature, commitment): (Group, Signature, Commitment),
@@ -54,7 +54,7 @@ impl TryFrom<(Group, Signature, Commitment)> for Verifier {
             Group::ModP160BitQGroup => &*MOD_P_160_BIT_Q_GROUP,
             Group::ModP224BitQGroup => &*MOD_P_224_BIT_Q_GROUP,
             Group::ModP256BitQGroup => &*MOD_P_256_BIT_Q_GROUP,
-            Group::UnspecifiedGroup => return Err(CryptoError::GroupNotSpecified),
+            Group::UnspecifiedGroup => return Err(Error::GroupNotSpecified),
         };
 
         let y1 = BigUint::from_bytes_be(&signature.y1);

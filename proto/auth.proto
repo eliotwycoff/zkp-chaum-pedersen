@@ -2,10 +2,14 @@ syntax = "proto3";
 package auth;
 
 service Auth {
+    // ZKP Authentication Routes
     rpc GetGroup (GetGroupRequest) returns (GetGroupResponse);
     rpc SignUp (SignUpRequest) returns (SignUpResponse);
     rpc Commit (CommitRequest) returns (CommitResponse);
     rpc Authenticate (AuthRequest) returns (AuthResponse);
+
+    // Protected Routes
+    rpc GetPrice (GetPriceRequest) returns (GetPriceResponse);
 }
 
 enum Group {
@@ -64,4 +68,14 @@ message AuthRequest {
 
 message AuthResponse {
     string session_id = 1;
+}
+
+message GetPriceRequest {
+    string session_id = 1;
+    string symbol = 2;
+}
+
+message GetPriceResponse {
+    string symbol = 1;
+    string price = 2;
 }

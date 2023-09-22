@@ -20,13 +20,14 @@ path = "src/client.rs"
 [dependencies]
 # Async
 tokio = {version = "1", features = ["macros", "rt-multi-thread"]}
+parking_lot = "0.12"
 
 # Data
 num-bigint = {version = "0.4", features = ["rand"]}
 rand = "0.8"
 hex = "0.4"
 lazy_static = "1.4"
-uuid = "1.4"
+uuid = {version = "1.4", features = ["v4"]}
 
 # gRPC
 tonic = "0.10"
