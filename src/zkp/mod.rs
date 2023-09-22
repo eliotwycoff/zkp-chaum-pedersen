@@ -165,14 +165,14 @@ impl From<(&'static str, &'static str, &'static str)> for GroupParams {
                 .filter(|c| !c.is_whitespace())
                 .collect::<String>(),
         )
-        .expect("Failed to decode 2048-bit-group q");
+        .expect("Failed to decode q");
         let alpha_bytes = hex::decode(
             alpha_str
                 .chars()
                 .filter(|c| !c.is_whitespace())
                 .collect::<String>(),
         )
-        .expect("Failed to decode 2048-bit-group alpha");
+        .expect("Failed to decode alpha");
 
         let p = BigUint::from_bytes_be(&p_bytes);
         let q = BigUint::from_bytes_be(&q_bytes);
