@@ -3,7 +3,9 @@ This project is a **work-in-progress** demo of how authentication can be perform
 
 The project contains code for an authentication server that accepts incoming authentication requests over gRPC. Users running a client can sign up and authenticate via a CLI. Because a Zero-Knowledge Proof is used to perform authentication, neither the user password nor its hash are sent over the wire. Once authenticated, the user is given access to protected routes on the server.
 
-## Getting Started
+## Try It Yourself
+
+This project assumes you have Cargo installed. This is pretty easy; instructions for your operating system can be found in [https://doc.rust-lang.org/cargo/getting-started/installation.html](The Cargo Book).
 
 Clone the repo.
 
