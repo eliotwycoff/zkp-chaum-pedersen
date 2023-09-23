@@ -5,7 +5,7 @@ The project contains code for an authentication server that accepts incoming aut
 
 ## Try It Yourself
 
-This project assumes you have Cargo installed. This is pretty easy; instructions for your operating system can be found in [https://doc.rust-lang.org/cargo/getting-started/installation.html](The Cargo Book).
+This project assumes you have Cargo installed. This is pretty easy; instructions for your operating system can be found in [The Cargo Book](https://doc.rust-lang.org/cargo/getting-started/installation.html).
 
 Clone the repo.
 
