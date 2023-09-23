@@ -15,6 +15,7 @@ impl Signer {
     }
 
     pub fn create_secret_from_password(&self, password: String) -> BigUint {
+        // This should be salted before using in an actual production environment.
         BigUint::from_bytes_be(sha256::digest(password).as_bytes())
             .modpow(&BigUint::from(1u32), &self.group.q)
     }

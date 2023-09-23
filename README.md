@@ -23,15 +23,19 @@ Run the authentication server.
 cargo run --bin server
 ```
 
-The terminal will prompt you to select an encryption group. After selecting one, the server will start.
-
-Finally, in a separate terminal, run the client.
+Then, in a separate terminal, run the client.
 
 ```bash
 cargo run --bin client
 ```
 
-...to be continued.
+Now that the client is running, the terminal will allow you to register a new user. This involves choosing an encryption group, a username and a password. 
+
+Once you're done registering the user, the terminal will give you the option to try authenticating that user with the server. This involves inputting the user's password (if you remember it), which is used to generate the secret used in the Chaum-Pederson protocol. 
+
+Generally speaking, authentication will fail if you enter the wrong password. But if you're using the weakest (5-bit) encryption group, the password space is so small that you'll be able to log in using a random password in about 1 in every 10 tries.
+
+Because authentication is performed via ZKP, neither your password nor its hash are transmitted over the wire.
 
 ## Run Tests
 
