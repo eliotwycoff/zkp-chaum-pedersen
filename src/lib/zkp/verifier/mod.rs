@@ -1,15 +1,12 @@
 use crate::{
-    grpc::auth::{Challenge, Commitment, Group, Signature, Solution},
-    zkp::{
-        Error, GroupParams, MOD_P_004_BIT_Q_GROUP, MOD_P_160_BIT_Q_GROUP, MOD_P_224_BIT_Q_GROUP,
-        MOD_P_256_BIT_Q_GROUP,
-    },
+    grpc::auth::{Challenge, Commitment, Signature, Solution},
+    zkp::{Error, Group},
 };
 use num_bigint::{BigUint, RandBigInt};
 
 #[derive(Debug)]
 pub struct Verifier {
-    group: &'static GroupParams,
+    group: Group,
     y1: BigUint,
     y2: BigUint,
     r1: BigUint,
@@ -25,7 +22,7 @@ impl Verifier {
     }
 
     /// Verifies that the given solution satisifes the commitment, i.e.
-    /// checks that `r0 = alpha^s * y1^c` and `r1 = beta^s * y1^c`.
+    /// checks that `r1 = alpha^s * y1^c` and `r2 = beta^s * y2^c`.
     pub fn verify_solution(&self, solution: Solution) -> bool {
         let one = BigUint::from(1u32);
         let s = BigUint::from_bytes_be(&solution.s);
@@ -43,28 +40,20 @@ impl Verifier {
     }
 }
 
-impl TryFrom<(Group, Signature, Commitment)> for Verifier {
+impl TryFrom<(Signature, Commitment)> for Verifier {
     type Error = Error;
 
-    fn try_from(
-        (group, signature, commitment): (Group, Signature, Commitment),
-    ) -> Result<Self, Self::Error> {
-        let params = match group {
-            Group::ModP004BitQGroup => &*MOD_P_004_BIT_Q_GROUP,
-            Group::ModP160BitQGroup => &*MOD_P_160_BIT_Q_GROUP,
-            Group::ModP224BitQGroup => &*MOD_P_224_BIT_Q_GROUP,
-            Group::ModP256BitQGroup => &*MOD_P_256_BIT_Q_GROUP,
-            Group::UnspecifiedGroup => return Err(Error::GroupNotSpecified),
-        };
+    fn try_from((signature, commitment): (Signature, Commitment)) -> Result<Self, Self::Error> {
+        let group = Group::from(&signature.group.ok_or_else(|| Error::GroupNotSpecified)?);
 
         let y1 = BigUint::from_bytes_be(&signature.y1);
         let y2 = BigUint::from_bytes_be(&signature.y2);
         let r1 = BigUint::from_bytes_be(&commitment.r1);
         let r2 = BigUint::from_bytes_be(&commitment.r2);
-        let c = rand::thread_rng().gen_biguint_below(&params.q);
+        let c = rand::thread_rng().gen_biguint_below(&group.q);
 
         Ok(Self {
-            group: params,
+            group,
             y1,
             y2,
             r1,

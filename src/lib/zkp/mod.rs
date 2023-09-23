@@ -1,3 +1,4 @@
+use crate::grpc::auth::ProtoGroup;
 pub use error::Error;
 use lazy_static::lazy_static;
 use num_bigint::{BigUint, RandBigInt};
@@ -10,16 +11,16 @@ pub mod verifier;
 mod test;
 
 lazy_static! {
-    static ref MOD_P_004_BIT_Q_GROUP: GroupParams = {
+    pub static ref MODP_0005_004_GROUP: Group = {
         let p = BigUint::from(23u32);
         let q = BigUint::from(11u32);
         let alpha = BigUint::from(2u32);
 
-        GroupParams::from((p, q, alpha))
+        Group::from((p, q, alpha))
     };
 
     // From Section 2.1 of https://www.rfc-editor.org/rfc/rfc5114.txt
-    static ref MOD_P_160_BIT_Q_GROUP: GroupParams = {
+    pub static ref MODP_1024_160_GROUP: Group = {
         let p_str = r#"
             B10B8F96 A080E01D DE92DE5E AE5D54EC 52C99FBC FB06A3C6
             9A6A9DCA 52D23B61 6073E286 75A23D18 9838EF1E 2EE652C0
@@ -42,11 +43,11 @@ lazy_static! {
             855E6EEB 22B3B2E5
         "#;
 
-        GroupParams::from((p_str, q_str, alpha_str))
+        Group::from((p_str, q_str, alpha_str))
     };
 
     // From Section 2.2 of https://www.rfc-editor.org/rfc/rfc5114.txt
-    static ref MOD_P_224_BIT_Q_GROUP: GroupParams = {
+    pub static ref MODP_2048_224_GROUP: Group = {
         let p_str = r#"
             AD107E1E 9123A9D0 D660FAA7 9559C51F A20D64E5 683B9FD1
             B54B1597 B61D0A75 E6FA141D F95A56DB AF9A3C40 7BA1DF15
@@ -80,11 +81,11 @@ lazy_static! {
             81BC087F 2A7065B3 84B890D3 191F2BFA
         "#;
 
-        GroupParams::from((p_str, q_str, alpha_str))
+        Group::from((p_str, q_str, alpha_str))
     };
 
     // From Section 2.3 of https://www.rfc-editor.org/rfc/rfc5114.txt
-    static ref MOD_P_256_BIT_Q_GROUP: GroupParams = {
+    pub static ref MODP_2048_256_GROUP: Group = {
         let p_str = r#"
             87A8E61D B4B6663C FFBBD19C 65195999 8CEEF608 660DD0F2
             5D2CEED4 435E3B00 E00DF8F1 D61957D4 FAF7DF45 61B2AA30
@@ -118,19 +119,19 @@ lazy_static! {
             5E2327CF EF98C582 664B4C0F 6CC41659
         "#;
 
-        GroupParams::from((p_str, q_str, alpha_str))
+        Group::from((p_str, q_str, alpha_str))
     };
 }
 
 #[derive(Debug)]
-pub struct GroupParams {
+pub struct Group {
     p: BigUint,
     q: BigUint,
     alpha: BigUint,
     beta: BigUint,
 }
 
-impl GroupParams {
+impl Group {
     fn gen_random_beta(p: &BigUint, q: &BigUint, alpha: &BigUint) -> BigUint {
         loop {
             let beta = alpha.modpow(&rand::thread_rng().gen_biguint_below(&q), &p);
@@ -140,9 +141,29 @@ impl GroupParams {
             }
         }
     }
+
+    fn to_proto(&self) -> ProtoGroup {
+        ProtoGroup {
+            p: self.p.to_bytes_be(),
+            q: self.q.to_bytes_be(),
+            alpha: self.alpha.to_bytes_be(),
+            beta: self.beta.to_bytes_be(),
+        }
+    }
 }
 
-impl From<(BigUint, BigUint, BigUint)> for GroupParams {
+impl From<&ProtoGroup> for Group {
+    fn from(group: &ProtoGroup) -> Self {
+        Self {
+            p: BigUint::from_bytes_be(group.p.as_slice()),
+            q: BigUint::from_bytes_be(group.q.as_slice()),
+            alpha: BigUint::from_bytes_be(group.alpha.as_slice()),
+            beta: BigUint::from_bytes_be(group.beta.as_slice()),
+        }
+    }
+}
+
+impl From<(BigUint, BigUint, BigUint)> for Group {
     fn from((p, q, alpha): (BigUint, BigUint, BigUint)) -> Self {
         let beta = Self::gen_random_beta(&p, &q, &alpha);
 
@@ -150,7 +171,7 @@ impl From<(BigUint, BigUint, BigUint)> for GroupParams {
     }
 }
 
-impl From<(&'static str, &'static str, &'static str)> for GroupParams {
+impl From<(&'static str, &'static str, &'static str)> for Group {
     fn from((p_str, q_str, alpha_str): (&'static str, &'static str, &'static str)) -> Self {
         let p_bytes = hex::decode(
             p_str

@@ -1,18 +1,23 @@
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct GetGroupRequest {}
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct GetGroupResponse {
-    #[prost(enumeration = "Group", tag = "1")]
-    pub group: i32,
+pub struct ProtoGroup {
+    #[prost(bytes = "vec", tag = "1")]
+    pub p: ::prost::alloc::vec::Vec<u8>,
+    #[prost(bytes = "vec", tag = "2")]
+    pub q: ::prost::alloc::vec::Vec<u8>,
+    #[prost(bytes = "vec", tag = "3")]
+    pub alpha: ::prost::alloc::vec::Vec<u8>,
+    #[prost(bytes = "vec", tag = "4")]
+    pub beta: ::prost::alloc::vec::Vec<u8>,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Signature {
-    #[prost(bytes = "vec", tag = "1")]
-    pub y1: ::prost::alloc::vec::Vec<u8>,
+    #[prost(message, optional, tag = "1")]
+    pub group: ::core::option::Option<ProtoGroup>,
     #[prost(bytes = "vec", tag = "2")]
+    pub y1: ::prost::alloc::vec::Vec<u8>,
+    #[prost(bytes = "vec", tag = "3")]
     pub y2: ::prost::alloc::vec::Vec<u8>,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -91,41 +96,6 @@ pub struct GetPriceResponse {
     pub symbol: ::prost::alloc::string::String,
     #[prost(string, tag = "2")]
     pub price: ::prost::alloc::string::String,
-}
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
-#[repr(i32)]
-pub enum Group {
-    UnspecifiedGroup = 0,
-    ModP004BitQGroup = 1,
-    ModP160BitQGroup = 2,
-    ModP224BitQGroup = 3,
-    ModP256BitQGroup = 4,
-}
-impl Group {
-    /// String value of the enum field names used in the ProtoBuf definition.
-    ///
-    /// The values are not transformed in any way and thus are considered stable
-    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
-    pub fn as_str_name(&self) -> &'static str {
-        match self {
-            Group::UnspecifiedGroup => "UNSPECIFIED_GROUP",
-            Group::ModP004BitQGroup => "MOD_P_004_BIT_Q_GROUP",
-            Group::ModP160BitQGroup => "MOD_P_160_BIT_Q_GROUP",
-            Group::ModP224BitQGroup => "MOD_P_224_BIT_Q_GROUP",
-            Group::ModP256BitQGroup => "MOD_P_256_BIT_Q_GROUP",
-        }
-    }
-    /// Creates an enum from field names used in the ProtoBuf definition.
-    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
-        match value {
-            "UNSPECIFIED_GROUP" => Some(Self::UnspecifiedGroup),
-            "MOD_P_004_BIT_Q_GROUP" => Some(Self::ModP004BitQGroup),
-            "MOD_P_160_BIT_Q_GROUP" => Some(Self::ModP160BitQGroup),
-            "MOD_P_224_BIT_Q_GROUP" => Some(Self::ModP224BitQGroup),
-            "MOD_P_256_BIT_Q_GROUP" => Some(Self::ModP256BitQGroup),
-            _ => None,
-        }
-    }
 }
 /// Generated client implementations.
 pub mod auth_client {
@@ -213,28 +183,6 @@ pub mod auth_client {
             self
         }
         /// ZKP Authentication Routes
-        pub async fn get_group(
-            &mut self,
-            request: impl tonic::IntoRequest<super::GetGroupRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::GetGroupResponse>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::new(
-                        tonic::Code::Unknown,
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/auth.Auth/GetGroup");
-            let mut req = request.into_request();
-            req.extensions_mut().insert(GrpcMethod::new("auth.Auth", "GetGroup"));
-            self.inner.unary(req, path, codec).await
-        }
         pub async fn sign_up(
             &mut self,
             request: impl tonic::IntoRequest<super::SignUpRequest>,
@@ -325,13 +273,6 @@ pub mod auth_server {
     #[async_trait]
     pub trait Auth: Send + Sync + 'static {
         /// ZKP Authentication Routes
-        async fn get_group(
-            &self,
-            request: tonic::Request<super::GetGroupRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::GetGroupResponse>,
-            tonic::Status,
-        >;
         async fn sign_up(
             &self,
             request: tonic::Request<super::SignUpRequest>,
@@ -432,50 +373,6 @@ pub mod auth_server {
         fn call(&mut self, req: http::Request<B>) -> Self::Future {
             let inner = self.inner.clone();
             match req.uri().path() {
-                "/auth.Auth/GetGroup" => {
-                    #[allow(non_camel_case_types)]
-                    struct GetGroupSvc<T: Auth>(pub Arc<T>);
-                    impl<T: Auth> tonic::server::UnaryService<super::GetGroupRequest>
-                    for GetGroupSvc<T> {
-                        type Response = super::GetGroupResponse;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::Response>,
-                            tonic::Status,
-                        >;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<super::GetGroupRequest>,
-                        ) -> Self::Future {
-                            let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                <T as Auth>::get_group(&inner, request).await
-                            };
-                            Box::pin(fut)
-                        }
-                    }
-                    let accept_compression_encodings = self.accept_compression_encodings;
-                    let send_compression_encodings = self.send_compression_encodings;
-                    let max_decoding_message_size = self.max_decoding_message_size;
-                    let max_encoding_message_size = self.max_encoding_message_size;
-                    let inner = self.inner.clone();
-                    let fut = async move {
-                        let inner = inner.0;
-                        let method = GetGroupSvc(inner);
-                        let codec = tonic::codec::ProstCodec::default();
-                        let mut grpc = tonic::server::Grpc::new(codec)
-                            .apply_compression_config(
-                                accept_compression_encodings,
-                                send_compression_encodings,
-                            )
-                            .apply_max_message_size_config(
-                                max_decoding_message_size,
-                                max_encoding_message_size,
-                            );
-                        let res = grpc.unary(method, req).await;
-                        Ok(res)
-                    };
-                    Box::pin(fut)
-                }
                 "/auth.Auth/SignUp" => {
                     #[allow(non_camel_case_types)]
                     struct SignUpSvc<T: Auth>(pub Arc<T>);

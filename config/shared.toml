@@ -1,0 +1,2 @@
+# Shared Configurations
+auth_server_address = "[::1]:50055"

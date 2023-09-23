@@ -3,8 +3,8 @@ pub use auth::{
     auth_client::AuthClient,
     auth_server::{Auth, AuthServer},
     AuthRequest, AuthResponse, Challenge, CommitRequest, CommitResponse, Commitment,
-    GetGroupRequest, GetGroupResponse, GetPriceRequest, GetPriceResponse, Group, SignUpRequest,
-    SignUpResponse, Signature, Solution,
+    GetPriceRequest, GetPriceResponse, ProtoGroup, SignUpRequest, SignUpResponse, Signature,
+    Solution,
 };
 use parking_lot::RwLock;
 use std::{
@@ -16,22 +16,20 @@ use uuid::Uuid;
 
 mod auth;
 
-type Username = String;
+pub type Username = String;
+pub type SessionId = Uuid;
 type VerifierId = Uuid;
-type SessionId = Uuid;
 
 #[derive(Debug, Default)]
 pub struct AuthService {
-    group: Group,
     signatures: RwLock<HashMap<Username, Signature>>,
     verifiers: RwLock<HashMap<VerifierId, Verifier>>,
     sessions: RwLock<HashSet<SessionId>>,
 }
 
 impl AuthService {
-    pub fn new(group: Group) -> Self {
+    pub fn new() -> Self {
         Self {
-            group,
             signatures: RwLock::new(HashMap::new()),
             verifiers: RwLock::new(HashMap::new()),
             sessions: RwLock::new(HashSet::new()),
@@ -41,16 +39,6 @@ impl AuthService {
 
 #[tonic::async_trait]
 impl Auth for AuthService {
-    async fn get_group(
-        &self,
-        _: Request<GetGroupRequest>,
-    ) -> Result<Response<GetGroupResponse>, Status> {
-        // Return the group (encryption protocol) to the client.
-        Ok(Response::new(GetGroupResponse {
-            group: self.group.into(),
-        }))
-    }
-
     async fn sign_up(
         &self,
         request: Request<SignUpRequest>,
@@ -61,6 +49,11 @@ impl Auth for AuthService {
         let signature = request
             .signature
             .ok_or_else(|| Status::invalid_argument("Signature required"))?;
+
+        // Make sure that a group was passed with the signature.
+        if signature.group.is_none() {
+            return Err(Status::invalid_argument("Group required"));
+        }
 
         // Make sure the username doesn't already exist.
         if self.signatures.read().get(&request.username).is_some() {
@@ -90,8 +83,8 @@ impl Auth for AuthService {
             None => return Err(Status::not_found("Username not found")),
         };
 
-        // Create and the verifier from the signature and commitment.
-        let verifier = Verifier::try_from((self.group, signature, commitment))?;
+        // Create the verifier from the signature and commitment.
+        let verifier = Verifier::try_from((signature, commitment))?;
 
         // Create the authentication challenge for the client.
         let verifier_id = Uuid::new_v4();

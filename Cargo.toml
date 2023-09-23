@@ -2,12 +2,14 @@
 name = "zkp-chaum-pedersen"
 version = "0.1.0"
 edition = "2021"
+authors = ["Eliot Wycoff"]
+description = "A Chaum-Pedersen zero-knowledge proof authentication demo"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [lib]
 name = "lib"
-path = "src/lib.rs"
+path = "src/lib/mod.rs"
 
 [[bin]]
 name = "server"
@@ -18,25 +20,30 @@ name = "client"
 path = "src/client.rs"
 
 [dependencies]
+# Config
+config = "0.13.3"
+
 # Async
-tokio = {version = "1", features = ["macros", "rt-multi-thread"]}
-parking_lot = "0.12"
+tokio = {version = "1.32.0", features = ["macros", "rt-multi-thread"]}
+parking_lot = "0.12.1"
 
 # Data
-num-bigint = {version = "0.4", features = ["rand"]}
-rand = "0.8"
-hex = "0.4"
-lazy_static = "1.4"
-uuid = {version = "1.4", features = ["v4"]}
+num-bigint = {version = "0.4.4", features = ["rand"]}
+rand = "0.8.5"
+hex = "0.4.3"
+sha256 = "1.4.0"
+lazy_static = "1.4.0"
+uuid = {version = "1.4.1", features = ["v4"]}
+serde = {version = "1.0.188", features = ["derive"]}
 
 # gRPC
-tonic = "0.10"
-tonic-types = "0.10"
-prost = "0.12"
-prost-types = "0.12" 
+tonic = "0.10.1"
+tonic-types = "0.10.1"
+prost = "0.12.1"
+prost-types = "0.12.1" 
 
 # CLI
-inquire = "0.6"
+inquire = "0.6.2"
 
 [build-dependencies]
-tonic-build = "0.10"
+tonic-build = "0.10.1"

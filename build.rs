@@ -3,7 +3,7 @@ fn main() {
         .protoc_arg("--experimental_allow_proto3_optional")
         .build_server(true)
         .build_client(true)
-        .out_dir("src/grpc/auth/")
+        .out_dir("src/lib/grpc/auth/")
         .compile(&["proto/auth.proto"], &["proto/"])
         .expect("Failed to build auth protobufs");
 

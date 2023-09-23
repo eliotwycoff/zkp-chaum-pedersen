@@ -1,24 +1,27 @@
 use crate::{
-    grpc::auth::{Challenge, Commitment, Group, Signature, Solution},
-    zkp::{
-        Error, GroupParams, MOD_P_004_BIT_Q_GROUP, MOD_P_160_BIT_Q_GROUP, MOD_P_224_BIT_Q_GROUP,
-        MOD_P_256_BIT_Q_GROUP,
-    },
+    grpc::auth::{Challenge, Commitment, Signature, Solution},
+    zkp::Group,
 };
 use num_bigint::{BigUint, RandBigInt};
 
 pub struct Signer {
-    group: &'static GroupParams,
+    group: &'static Group,
     k: BigUint,
 }
 
 impl Signer {
-    pub fn create_secret(&self) -> BigUint {
+    pub fn create_random_secret(&self) -> BigUint {
         rand::thread_rng().gen_biguint_below(&self.group.q)
+    }
+
+    pub fn create_secret_from_password(&self, password: String) -> BigUint {
+        BigUint::from_bytes_be(sha256::digest(password).as_bytes())
+            .modpow(&BigUint::from(1u32), &self.group.q)
     }
 
     pub fn create_signature(&self, secret: &BigUint) -> Signature {
         Signature {
+            group: Some(self.group.to_proto()),
             y1: self.group.alpha.modpow(secret, &self.group.p).to_bytes_be(),
             y2: self.group.beta.modpow(secret, &self.group.p).to_bytes_be(),
         }
@@ -62,20 +65,10 @@ impl Signer {
     }
 }
 
-impl TryFrom<Group> for Signer {
-    type Error = Error;
+impl From<&'static Group> for Signer {
+    fn from(group: &'static Group) -> Self {
+        let k = rand::thread_rng().gen_biguint_below(&group.q);
 
-    fn try_from(group: Group) -> Result<Self, Self::Error> {
-        let params = match group {
-            Group::ModP004BitQGroup => &*MOD_P_004_BIT_Q_GROUP,
-            Group::ModP160BitQGroup => &*MOD_P_160_BIT_Q_GROUP,
-            Group::ModP224BitQGroup => &*MOD_P_224_BIT_Q_GROUP,
-            Group::ModP256BitQGroup => &*MOD_P_256_BIT_Q_GROUP,
-            Group::UnspecifiedGroup => return Err(Error::GroupNotSpecified),
-        };
-
-        let k = rand::thread_rng().gen_biguint_below(&params.q);
-
-        Ok(Self { group: params, k })
+        Self { group, k }
     }
 }

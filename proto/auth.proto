@@ -3,7 +3,6 @@ package auth;
 
 service Auth {
     // ZKP Authentication Routes
-    rpc GetGroup (GetGroupRequest) returns (GetGroupResponse);
     rpc SignUp (SignUpRequest) returns (SignUpResponse);
     rpc Commit (CommitRequest) returns (CommitResponse);
     rpc Authenticate (AuthRequest) returns (AuthResponse);
@@ -12,23 +11,17 @@ service Auth {
     rpc GetPrice (GetPriceRequest) returns (GetPriceResponse);
 }
 
-enum Group {
-    UNSPECIFIED_GROUP = 0;
-    MOD_P_004_BIT_Q_GROUP = 1;
-    MOD_P_160_BIT_Q_GROUP = 2;
-    MOD_P_224_BIT_Q_GROUP = 3;
-    MOD_P_256_BIT_Q_GROUP = 4;
-}
-
-message GetGroupRequest {}
-
-message GetGroupResponse {
-    Group group = 1;
+message ProtoGroup {
+    bytes p = 1;
+    bytes q = 2;
+    bytes alpha = 3;
+    bytes beta = 4;
 }
 
 message Signature {
-    bytes y1 = 1;
-    bytes y2 = 2;
+    ProtoGroup group = 1;
+    bytes y1 = 2;
+    bytes y2 = 3;
 }
 
 message SignUpRequest {
