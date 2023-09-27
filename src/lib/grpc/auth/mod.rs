@@ -13,7 +13,7 @@ use std::{
     str::FromStr,
 };
 use tonic::{Request, Response, Status};
-use tracing::{debug, error, info, instrument, trace, warn, Span};
+use tracing::{debug, error, info, instrument, Span};
 use uuid::Uuid;
 
 mod auth;
@@ -75,7 +75,7 @@ impl Auth for AuthService {
             }
         };
 
-        // Records p, q, alpha and beta to the current tracing span.
+        // Record p, q, alpha and beta to the current tracing span.
         span.record("group", group.tracing_string().as_str());
 
         // Make sure the username doesn't already exist.
@@ -91,10 +91,19 @@ impl Auth for AuthService {
         Ok(Response::new(SignUpResponse {}))
     }
 
+    #[instrument(
+        skip(self, request),
+        fields(
+            request_id = %Uuid::new_v4(),
+            username = %request.get_ref().username,
+            commitment,
+        )
+    )]
     async fn commit(
         &self,
         request: Request<CommitRequest>,
     ) -> Result<Response<CommitResponse>, Status> {
+        let span = Span::current();
         let request = request.into_inner();
 
         // Make sure a commitment was actually passed.
@@ -102,14 +111,26 @@ impl Auth for AuthService {
             .commitment
             .ok_or_else(|| Status::invalid_argument("Commitment required"))?;
 
+        // Record r1 and r2 to the current tracing span.
+        span.record("commitment", commitment.tracing_string().as_str());
+
         // Make sure the username exists, and get the signature.
         let signature = match self.signatures.read().get(&request.username) {
             Some(signature) => signature.clone(),
-            None => return Err(Status::not_found("Username not found")),
+            None => {
+                info!("Username not found");
+                return Err(Status::not_found("Username not found"));
+            }
         };
 
         // Create the verifier from the signature and commitment.
-        let verifier = Verifier::try_from((signature, commitment))?;
+        let verifier = match Verifier::try_from((signature, commitment)) {
+            Ok(verifier) => verifier,
+            Err(error) => {
+                error!("Failed to create verifier => {}", error);
+                return Err(Status::internal("An internal error occurred"));
+            }
+        };
 
         // Create the authentication challenge for the client.
         let verifier_id = Uuid::new_v4();
@@ -118,6 +139,7 @@ impl Auth for AuthService {
 
         // Safely store the verifier (in memory, for demo purposes).
         self.verifiers.write().insert(verifier_id, verifier);
+        debug!("Verifier saved in memory");
 
         // Return the verifier id and challenge to the client.
         Ok(Response::new(CommitResponse {
@@ -126,16 +148,27 @@ impl Auth for AuthService {
         }))
     }
 
+    #[instrument(
+        skip(self, request),
+        fields(
+            request_id = %Uuid::new_v4(),
+            verifier_id = %request.get_ref().verifier_id,
+            solution,
+        )
+    )]
     async fn authenticate(
         &self,
         request: Request<AuthRequest>,
     ) -> Result<Response<AuthResponse>, Status> {
+        let span = Span::current();
         let request = request.into_inner();
 
         // Make sure that a solution was actually passed.
         let solution = request
             .solution
             .ok_or_else(|| Status::invalid_argument("Solution required"))?;
+
+        // TODO: Record s to the current tracing span.
 
         // Get the verifier, if it exists.
         let verifier_id = Uuid::from_str(request.verifier_id.as_str())
@@ -190,7 +223,7 @@ impl Signature {
         format!(
             "{{y1: {}, y2: {}}}",
             BigUint::from_bytes_be(self.y1.as_slice()),
-            BigUint::from_bytes_be(self.y2.as_slice())
+            BigUint::from_bytes_be(self.y2.as_slice()),
         )
     }
 }
@@ -202,7 +235,17 @@ impl ProtoGroup {
             BigUint::from_bytes_be(self.p.as_slice()),
             BigUint::from_bytes_be(self.q.as_slice()),
             BigUint::from_bytes_be(self.alpha.as_slice()),
-            BigUint::from_bytes_be(self.beta.as_slice())
+            BigUint::from_bytes_be(self.beta.as_slice()),
+        )
+    }
+}
+
+impl Commitment {
+    pub fn tracing_string(&self) -> String {
+        format!(
+            "{{r1: {}, r2: {}}}",
+            BigUint::from_bytes_be(self.r1.as_slice()),
+            BigUint::from_bytes_be(self.r2.as_slice()),
         )
     }
 }
