@@ -6,12 +6,14 @@ pub use auth::{
     GetPriceRequest, GetPriceResponse, ProtoGroup, SignUpRequest, SignUpResponse, Signature,
     Solution,
 };
+use num_bigint::BigUint;
 use parking_lot::RwLock;
 use std::{
     collections::{HashMap, HashSet},
     str::FromStr,
 };
 use tonic::{Request, Response, Status};
+use tracing::{debug, error, info, instrument, trace, warn, Span};
 use uuid::Uuid;
 
 mod auth;
@@ -39,29 +41,52 @@ impl AuthService {
 
 #[tonic::async_trait]
 impl Auth for AuthService {
+    #[instrument(
+        skip(self, request),
+        fields(
+            request_id = %Uuid::new_v4(),
+            username = %request.get_ref().username,
+            signature,
+            group,
+        )
+    )]
     async fn sign_up(
         &self,
         request: Request<SignUpRequest>,
     ) -> Result<Response<SignUpResponse>, Status> {
+        let span = Span::current();
         let request = request.into_inner();
 
         // Make sure a signature was actually passed.
-        let signature = request
-            .signature
-            .ok_or_else(|| Status::invalid_argument("Signature required"))?;
+        let signature = request.signature.ok_or_else(|| {
+            info!("Signature required");
+            Status::invalid_argument("Signature required")
+        })?;
+
+        // Record y1 and y2 to the current tracing span.
+        span.record("signature", signature.tracing_string().as_str());
 
         // Make sure that a group was passed with the signature.
-        if signature.group.is_none() {
-            return Err(Status::invalid_argument("Group required"));
-        }
+        let group = match &signature.group {
+            Some(group) => group,
+            None => {
+                info!("Group required");
+                return Err(Status::invalid_argument("Group required"));
+            }
+        };
+
+        // Records p, q, alpha and beta to the current tracing span.
+        span.record("group", group.tracing_string().as_str());
 
         // Make sure the username doesn't already exist.
         if self.signatures.read().get(&request.username).is_some() {
+            info!("Username already exists");
             return Err(Status::already_exists("Username already exists"));
         }
 
         // Safely store the (username, signature) pair (in memory, for demo purposes).
         self.signatures.write().insert(request.username, signature);
+        debug!("Username and signature saved to memory");
 
         Ok(Response::new(SignUpResponse {}))
     }
@@ -157,5 +182,27 @@ impl Auth for AuthService {
             symbol: request.symbol,
             price: String::from("27538.23"),
         }))
+    }
+}
+
+impl Signature {
+    pub fn tracing_string(&self) -> String {
+        format!(
+            "{{y1: {}, y2: {}}}",
+            BigUint::from_bytes_be(self.y1.as_slice()),
+            BigUint::from_bytes_be(self.y2.as_slice())
+        )
+    }
+}
+
+impl ProtoGroup {
+    pub fn tracing_string(&self) -> String {
+        format!(
+            "{{p: {}, q: {}, alpha: {}, beta: {}}}",
+            BigUint::from_bytes_be(self.p.as_slice()),
+            BigUint::from_bytes_be(self.q.as_slice()),
+            BigUint::from_bytes_be(self.alpha.as_slice()),
+            BigUint::from_bytes_be(self.beta.as_slice())
+        )
     }
 }
