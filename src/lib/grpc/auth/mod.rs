@@ -168,16 +168,24 @@ impl Auth for AuthService {
             .solution
             .ok_or_else(|| Status::invalid_argument("Solution required"))?;
 
-        // TODO: Record s to the current tracing span.
+        // Record s to the current tracing span.
+        span.record("s", solution.tracing_string().as_str());
 
         // Get the verifier, if it exists.
-        let verifier_id = Uuid::from_str(request.verifier_id.as_str())
-            .map_err(|_| Status::invalid_argument("Invalid verifier_id"))?;
-        let verifier = self
-            .verifiers
-            .write()
-            .remove(&verifier_id)
-            .ok_or_else(|| Status::not_found("Verifier not found"))?;
+        let verifier_id = match Uuid::from_str(request.verifier_id.as_str()) {
+            Ok(verifier_id) => verifier_id,
+            Err(error) => {
+                info!("Failed to parse verifier_id as uuid => {}", error);
+                return Err(Status::invalid_argument("Invalid verifier_id"));
+            }
+        };
+        let verifier = match self.verifiers.write().remove(&verifier_id) {
+            Some(verifier) => verifier,
+            None => {
+                info!("Verifier not found");
+                return Err(Status::not_found("Verifier not found"));
+            }
+        };
 
         if verifier.verify_solution(solution) {
             // Create and safely store a session_id (in memory, for demo purposes);
@@ -185,16 +193,24 @@ impl Auth for AuthService {
             let session_id_string = session_id.to_string();
 
             self.sessions.write().insert(session_id);
+            info!("Verification passed; session_id stored in memory");
 
             // Return the session id to the client.
             Ok(Response::new(AuthResponse {
                 session_id: session_id_string,
             }))
         } else {
+            info!("Verification failed; no session_id created");
             Err(Status::unauthenticated("Authentication failed"))
         }
     }
 
+    #[instrument(
+        skip(self, request),
+        fields(
+            request_id = %Uuid::new_v4(),
+        )
+    )]
     async fn get_price(
         &self,
         request: Request<GetPriceRequest>,
@@ -202,10 +218,16 @@ impl Auth for AuthService {
         let request = request.into_inner();
 
         // Reject invalid session ids.
-        let session_id = Uuid::from_str(request.session_id.as_str())
-            .map_err(|_| Status::invalid_argument("Invalid session_id"))?;
+        let session_id = match Uuid::from_str(request.session_id.as_str()) {
+            Ok(session_id) => session_id,
+            Err(error) => {
+                info!("Failed to parse session_id as uuid => {}", error);
+                return Err(Status::invalid_argument("Invalid session_id"));
+            }
+        };
 
         if self.sessions.read().get(&session_id).is_none() {
+            info!("No session_id found => not authenticated");
             return Err(Status::unauthenticated("Not authenticated"));
         }
 
@@ -247,5 +269,11 @@ impl Commitment {
             BigUint::from_bytes_be(self.r1.as_slice()),
             BigUint::from_bytes_be(self.r2.as_slice()),
         )
+    }
+}
+
+impl Solution {
+    pub fn tracing_string(&self) -> String {
+        format!("{{s: {}}}", BigUint::from_bytes_be(self.s.as_slice()),)
     }
 }
